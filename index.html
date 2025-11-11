@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Card Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#e01287',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-900">Gift Card Validator</h1>
+            <p class="text-gray-600">Check the balance and status of your gift card</p>
+        </div>
+        <form id="check-balance-form" class="space-y-6">
+            <div>
+                <label for="card-id" class="text-sm font-medium text-gray-700">Gift Card ID</label>
+                <input id="card-id" name="card-id" type="text" required
+                    class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-brand focus:border-brand"
+                    placeholder="e.g., GC123456">
+            </div>
+            <button type="submit"
+                class="w-full px-4 py-2 font-medium text-white bg-brand rounded-md hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand">
+                Check Balance
+            </button>
+        </form>
+        <div id="result" class="hidden p-4 mt-4 text-center bg-gray-50 rounded-md">
+            <p class="text-lg font-semibold text-gray-800">Card Balance: <span id="balance" class="text-brand"></span></p>
+            <p class="text-sm text-gray-600">Status: <span id="status"></span></p>
+        </div>
+        <div id="loading" class="hidden text-center">
+            <p>Loading...</p>
+        </div>
+        <div id="error" class="hidden p-4 mt-4 text-center bg-red-100 text-red-700 rounded-md"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('check-balance-form');
+        const resultDiv = document.getElementById('result');
+        const balanceSpan = document.getElementById('balance');
+        const statusSpan = document.getElementById('status');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        
+        // IMPORTANT: Replace with your deployed Google Apps Script Web App URL
+        const WEB_APP_URL = 'YOUR_WEB_APP_URL';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cardId = document.getElementById('card-id').value;
+            
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            loadingDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${WEB_APP_URL}?action=getCard&id=${cardId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    balanceSpan.textContent = `$${data.data.balance.toFixed(2)}`;
+                    statusSpan.textContent = data.data.status;
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                errorDiv.textContent = `Error: ${err.message}`;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                loadingDiv.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

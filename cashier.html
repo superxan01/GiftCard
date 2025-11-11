@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashier Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#e01287',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+
+    <div id="login-section" class="flex items-center justify-center h-screen">
+        <div class="w-full max-w-sm p-8 space-y-6 bg-white rounded-lg shadow-md">
+            <h1 class="text-2xl font-bold text-center text-gray-900">Cashier Login</h1>
+            <form id="login-form" class="space-y-4">
+                <input type="email" id="email" placeholder="Email" required class="w-full px-3 py-2 border rounded-md focus:ring-brand focus:border-brand">
+                <input type="password" id="password" placeholder="Password or PIN" required class="w-full px-3 py-2 border rounded-md focus:ring-brand focus:border-brand">
+                <button type="submit" class="w-full px-4 py-2 font-medium text-white bg-brand rounded-md hover:bg-opacity-90">Login</button>
+            </form>
+            <div id="login-error" class="hidden text-center text-red-500"></div>
+        </div>
+    </div>
+
+    <div id="dashboard-section" class="hidden p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Cashier Dashboard</h1>
+            <button id="logout-btn" class="px-4 py-2 font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700">Logout</button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Add Card -->
+            <div class="p-6 bg-white rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Add New Gift Card</h2>
+                <form id="add-card-form" class="space-y-4">
+                    <input type="text" id="add-card-id" placeholder="New Card ID (e.g., GC123457)" required class="w-full px-3 py-2 border rounded-md">
+                    <input type="number" id="add-balance" placeholder="Initial Balance" step="0.01" required class="w-full px-3 py-2 border rounded-md">
+                    <button type="submit" class="w-full px-4 py-2 font-medium text-white bg-brand rounded-md hover:bg-opacity-90">Add Card</button>
+                </form>
+            </div>
+
+            <!-- Update Balance -->
+            <div class="p-6 bg-white rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Update Card Balance</h2>
+                <form id="update-balance-form" class="space-y-4">
+                    <input type="text" id="update-card-id" placeholder="Card ID to Update" required class="w-full px-3 py-2 border rounded-md">
+                    <input type="number" id="update-balance" placeholder="New Balance" step="0.01" required class="w-full px-3 py-2 border rounded-md">
+                    <button type="submit" class="w-full px-4 py-2 font-medium text-white bg-brand rounded-md hover:bg-opacity-90">Update Balance</button>
+                </form>
+            </div>
+        </div>
+        <div id="response-message" class="mt-6 text-center"></div>
+    </div>
+
+    <script>
+        // IMPORTANT: Replace with your deployed Google Apps Script Web App URL
+        const WEB_APP_URL = 'YOUR_WEB_APP_URL';
+        const user = { email: null, token: null };
+
+        const loginSection = document.getElementById('login-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const responseMessage = document.getElementById('response-message');
+
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginError = document.getElementById('login-error');
+
+            try {
+                const res = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'login', role: 'cashier', email, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    user.email = email;
+                    user.token = data.token;
+                    sessionStorage.setItem('user', JSON.stringify(user));
+                    loginSection.classList.add('hidden');
+                    dashboardSection.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                loginError.textContent = `Login Failed: ${err.message}`;
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        // Add Card
+        document.getElementById('add-card-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('add-card-id').value;
+            const balance = document.getElementById('add-balance').value;
+            
+            await handlePostRequest({
+                action: 'addCard',
+                id,
+                balance,
+                email: user.email,
+                token: user.token
+            }, 'Card added successfully!');
+        });
+
+        // Update Balance
+        document.getElementById('update-balance-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('update-card-id').value;
+            const balance = document.getElementById('update-balance').value;
+
+            await handlePostRequest({
+                action: 'updateBalance',
+                id,
+                balance,
+                email: user.email,
+                token: user.token
+            }, 'Balance updated successfully!');
+        });
+
+        async function handlePostRequest(body, successMsg) {
+            responseMessage.textContent = 'Processing...';
+            try {
+                const res = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    responseMessage.textContent = successMsg;
+                    responseMessage.className = 'mt-6 text-center text-green-500';
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                responseMessage.textContent = `Error: ${err.message}`;
+                responseMessage.className = 'mt-6 text-center text-red-500';
+            }
+        }
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            sessionStorage.removeItem('user');
+            window.location.reload();
+        });
+
+        // Check session
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+            Object.assign(user, JSON.parse(storedUser));
+            loginSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
